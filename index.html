@@ -3,25 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Intel Arc Pro B70 — Benchmark Results</title>
+  <title>Arc Pro B70 — Inference Benchmarks</title>
   <style>
     :root {
-      --bg: #0d1117;
-      --bg2: #161b22;
-      --bg3: #1c2128;
-      --border: #30363d;
-      --text: #c9d1d9;
-      --text-dim: #8b949e;
-      --accent: #58a6ff;
-      --accent2: #3fb950;
-      --accent3: #d29922;
-      --accent4: #f85149;
-      --accent5: #bc8cff;
-      --tag-bg: #1f3a5c;
-      --tag-text: #79c0ff;
+      --bg:        #0d1117;
+      --bg2:       #161b22;
+      --bg3:       #1c2128;
+      --border:    #30363d;
+      --text:      #c9d1d9;
+      --muted:     #8b949e;
+      --blue:      #58a6ff;
+      --green:     #3fb950;
+      --yellow:    #d29922;
+      --red:       #f85149;
+      --purple:    #bc8cff;
+      --mono:      "SFMono-Regular", Consolas, "Liberation Mono", monospace;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       background: var(--bg);
@@ -29,605 +28,567 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
       font-size: 14px;
       line-height: 1.6;
-      padding: 0;
     }
 
-    /* Header */
-    .site-header {
+    /* ── Header ── */
+    .header {
       background: var(--bg2);
       border-bottom: 1px solid var(--border);
-      padding: 20px 32px;
+      padding: 18px 28px;
       display: flex;
       align-items: center;
-      gap: 16px;
-    }
-    .site-header .gpu-icon {
-      font-size: 28px;
-    }
-    .site-header h1 {
-      font-size: 20px;
-      font-weight: 600;
-      color: var(--accent);
-    }
-    .site-header .subtitle {
-      font-size: 13px;
-      color: var(--text-dim);
-      margin-top: 2px;
-    }
-    .site-header .badges {
-      margin-left: auto;
-      display: flex;
-      gap: 8px;
+      gap: 14px;
       flex-wrap: wrap;
-      justify-content: flex-end;
     }
-    .badge {
-      background: var(--tag-bg);
-      color: var(--tag-text);
-      font-size: 11px;
-      font-weight: 600;
-      padding: 3px 10px;
-      border-radius: 20px;
-      border: 1px solid rgba(88,166,255,0.2);
-      white-space: nowrap;
+    .header-icon { font-size: 26px; }
+    .header-title { font-size: 18px; font-weight: 700; color: var(--blue); }
+    .header-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .header-tags  { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+    .tag {
+      font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px;
+      border: 1px solid; white-space: nowrap;
     }
-    .badge.green { background: #1a3a2a; color: #56d364; border-color: rgba(63,185,80,0.2); }
-    .badge.yellow { background: #3a2a10; color: #e3b341; border-color: rgba(210,153,34,0.2); }
-    .badge.red { background: #3a1a1a; color: #f85149; border-color: rgba(248,81,73,0.2); }
+    .tag-blue   { background: #1f3a5c; color: #79c0ff; border-color: rgba(88,166,255,.25); }
+    .tag-green  { background: #1a3a2a; color: #56d364; border-color: rgba(63,185,80,.25); }
+    .tag-yellow { background: #3a2a10; color: #e3b341; border-color: rgba(210,153,34,.25); }
 
-    /* Layout */
-    .container {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 28px 24px;
-    }
+    /* ── Layout ── */
+    .page { max-width: 1060px; margin: 0 auto; padding: 24px 20px; }
 
-    /* Sections */
-    .section {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      margin-bottom: 20px;
-      overflow: hidden;
-    }
-    .section-header {
-      padding: 14px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--bg3);
-    }
-    .section-header h2 {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text);
-    }
-    .section-header .build-tag {
-      font-size: 11px;
-      background: var(--bg);
-      color: var(--text-dim);
-      padding: 2px 8px;
-      border-radius: 4px;
-      border: 1px solid var(--border);
-      font-family: "SFMono-Regular", Consolas, monospace;
-    }
-    .section-header .status {
-      margin-left: auto;
-      font-size: 11px;
-      font-weight: 600;
-    }
-    .status.prod { color: var(--accent2); }
-    .status.bench { color: var(--accent3); }
-    .status.blocked { color: var(--accent4); }
-    .section-body { padding: 20px; }
-
-    /* Tables */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-    th {
-      text-align: left;
-      color: var(--text-dim);
-      font-weight: 600;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-    }
-    th.right { text-align: right; }
-    td {
-      padding: 9px 12px;
-      border-bottom: 1px solid rgba(48,54,61,0.5);
-      vertical-align: middle;
-    }
-    td.right { text-align: right; font-family: "SFMono-Regular", Consolas, monospace; }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255,255,255,0.02); }
-
-    .model-name {
-      font-family: "SFMono-Regular", Consolas, monospace;
-      color: var(--accent);
-      font-size: 12px;
-    }
-    .val-high { color: var(--accent2); font-weight: 700; }
-    .val-mid  { color: var(--accent3); font-weight: 600; }
-    .val-low  { color: var(--text-dim); }
-    .delta-up   { color: var(--accent2); font-size: 11px; }
-    .delta-down { color: var(--accent4); font-size: 11px; }
-    .delta-new  { color: var(--accent5); font-size: 11px; }
-
-    /* Warning / note boxes */
-    .note {
-      display: flex;
-      gap: 10px;
-      padding: 12px 16px;
-      border-radius: 6px;
-      font-size: 12.5px;
-      margin-top: 14px;
-    }
-    .note.warn  { background: rgba(210,153,34,0.1); border: 1px solid rgba(210,153,34,0.3); }
-    .note.info  { background: rgba(88,166,255,0.08); border: 1px solid rgba(88,166,255,0.2); }
-    .note.ok    { background: rgba(63,185,80,0.08); border: 1px solid rgba(63,185,80,0.2); }
-    .note-icon  { font-size: 16px; flex-shrink: 0; line-height: 1.4; }
-    .note p     { margin-top: 4px; color: var(--text-dim); line-height: 1.5; }
-    .note strong { color: var(--text); }
-
-    /* Meta grid */
-    .meta-grid {
+    /* ── Stat cards ── */
+    .stats {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 12px;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
-    .meta-card {
+    .stat {
       background: var(--bg2);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 14px 16px;
     }
-    .meta-card .label {
-      font-size: 11px;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-    .meta-card .value {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--accent);
-      font-family: "SFMono-Regular", Consolas, monospace;
-    }
-    .meta-card .sub {
-      font-size: 11px;
-      color: var(--text-dim);
-      margin-top: 3px;
-    }
+    .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; }
+    .stat-value { font-size: 22px; font-weight: 700; color: var(--blue); font-family: var(--mono); line-height: 1.2; }
+    .stat-sub   { font-size: 11px; color: var(--muted); margin-top: 4px; }
 
-    /* Summary comparison */
-    .compare-section { margin-top: 20px; }
-
-    /* Pending table */
-    .pending-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(48,54,61,0.4); align-items: flex-start; }
-    .pending-item:last-child { border-bottom: none; }
-    .pending-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent3); margin-top: 5px; flex-shrink: 0; }
-    .pending-dot.blocked { background: var(--accent4); }
-    .pending-dot.waiting { background: var(--accent5); }
-    .pending-title { font-size: 13px; font-weight: 600; color: var(--text); }
-    .pending-desc { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
-
-    /* Footer */
-    .site-footer {
-      border-top: 1px solid var(--border);
-      padding: 16px 24px;
-      text-align: center;
-      font-size: 12px;
-      color: var(--text-dim);
+    /* ── Card ── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      overflow: hidden;
     }
-    .site-footer a { color: var(--accent); text-decoration: none; }
-    .site-footer a:hover { text-decoration: underline; }
+    .card-head {
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .card-head h2 { font-size: 14px; font-weight: 600; color: var(--text); }
+    .card-meta { font-size: 11px; color: var(--muted); font-family: var(--mono); background: var(--bg); border: 1px solid var(--border); padding: 2px 8px; border-radius: 4px; }
+    .pill {
+      margin-left: auto; font-size: 11px; font-weight: 700; padding: 3px 10px;
+      border-radius: 20px; white-space: nowrap;
+    }
+    .pill-green  { background: rgba(63,185,80,.15);  color: var(--green);  border: 1px solid rgba(63,185,80,.3); }
+    .pill-yellow { background: rgba(210,153,34,.12); color: var(--yellow); border: 1px solid rgba(210,153,34,.3); }
+    .pill-red    { background: rgba(248,81,73,.12);  color: var(--red);    border: 1px solid rgba(248,81,73,.3); }
+    .pill-muted  { background: rgba(139,148,158,.1); color: var(--muted);  border: 1px solid var(--border); }
+    .pill-purple { background: rgba(188,140,255,.1); color: var(--purple); border: 1px solid rgba(188,140,255,.3); }
+
+    .card-body { padding: 16px 18px; }
+
+    /* ── Tables ── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .05em; color: var(--muted); padding: 8px 10px;
+      border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    th.r, td.r { text-align: right; }
+    td {
+      padding: 9px 10px;
+      border-bottom: 1px solid rgba(48,54,61,.5);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+
+    .mono  { font-family: var(--mono); font-size: 12px; color: var(--blue); }
+    .hi    { color: var(--green);  font-weight: 700; font-family: var(--mono); }
+    .mid   { color: var(--yellow); font-weight: 600; font-family: var(--mono); }
+    .lo    { color: var(--muted);  font-family: var(--mono); }
+    .up    { color: var(--green);  font-size: 11px; font-family: var(--mono); }
+    .down  { color: var(--red);    font-size: 11px; font-family: var(--mono); }
+    .newt  { color: var(--purple); font-size: 11px; }
+    .dim   { color: var(--muted); }
+
+    /* ── Alert boxes ── */
+    .alert {
+      display: flex; gap: 10px; padding: 11px 14px;
+      border-radius: 6px; font-size: 12.5px; margin-top: 14px; line-height: 1.5;
+    }
+    .alert-icon { font-size: 15px; flex-shrink: 0; padding-top: 1px; }
+    .alert-warn { background: rgba(210,153,34,.1);  border: 1px solid rgba(210,153,34,.3); }
+    .alert-info { background: rgba(88,166,255,.08); border: 1px solid rgba(88,166,255,.2); }
+    .alert-ok   { background: rgba(63,185,80,.08);  border: 1px solid rgba(63,185,80,.2); }
+    .alert strong { color: var(--text); }
+    .alert p { color: var(--muted); margin-top: 3px; }
 
     code {
-      font-family: "SFMono-Regular", Consolas, monospace;
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      padding: 1px 6px;
-      border-radius: 4px;
-      font-size: 12px;
-      color: var(--accent5);
+      font-family: var(--mono); font-size: 12px;
+      background: var(--bg3); border: 1px solid var(--border);
+      padding: 1px 5px; border-radius: 4px; color: var(--purple);
     }
 
-    h3 { font-size: 13px; color: var(--text-dim); font-weight: 600; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+    /* ── Roadmap list ── */
+    .road-item {
+      display: flex; gap: 12px; padding: 11px 0;
+      border-bottom: 1px solid rgba(48,54,61,.4); align-items: flex-start;
+    }
+    .road-item:last-child { border-bottom: none; }
+    .road-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px;
+    }
+    .dot-red    { background: var(--red); }
+    .dot-purple { background: var(--purple); }
+    .dot-yellow { background: var(--yellow); }
+    .dot-muted  { background: var(--muted); }
+    .road-title { font-size: 13px; font-weight: 600; color: var(--text); }
+    .road-desc  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--muted);
+      margin: 28px 0 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-label::after {
+      content: ""; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border); padding: 14px 20px;
+      text-align: center; font-size: 12px; color: var(--muted); margin-top: 12px;
+    }
+    footer a { color: var(--blue); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
 
-<header class="site-header">
-  <span class="gpu-icon">⚡</span>
+<!-- ── Header ── -->
+<header class="header">
+  <span class="header-icon">⚡</span>
   <div>
-    <h1>Intel Arc Pro B70 — Inference Benchmarks</h1>
-    <div class="subtitle">k8-core · Ubuntu 24.04 · kernel 6.17 · driver xe · GuC 70.60.0</div>
+    <div class="header-title">Intel Arc Pro B70 — Inference Benchmarks</div>
+    <div class="header-sub">k8-core · Ubuntu 24.04 · kernel 6.17 · driver xe · GuC 70.60.0 · llama.cpp</div>
   </div>
-  <div class="badges">
-    <span class="badge green">32 GB GDDR6</span>
-    <span class="badge">BMG G31</span>
-    <span class="badge">Vulkan1</span>
-    <span class="badge yellow">SYCL level_zero:0</span>
+  <div class="header-tags">
+    <span class="tag tag-green">32 GB GDDR6</span>
+    <span class="tag tag-blue">BMG G31</span>
+    <span class="tag tag-blue">Vulkan1</span>
+    <span class="tag tag-yellow">SYCL level_zero:0</span>
   </div>
 </header>
 
-<div class="container">
+<div class="page">
 
-  <!-- Meta cards -->
-  <div class="meta-grid">
-    <div class="meta-card">
-      <div class="label">Producción TG</div>
-      <div class="value">33.80 t/s</div>
-      <div class="sub">Gemma 4 26B-A4B Q4 · Vulkan b8780</div>
+  <!-- ── Stat cards ── -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Production TG</div>
+      <div class="stat-value">33.80<span style="font-size:13px;color:var(--muted)"> t/s</span></div>
+      <div class="stat-sub">26B-A4B Q4 · Vulkan b8780</div>
     </div>
-    <div class="meta-card">
-      <div class="label">SYCL Peak TG</div>
-      <div class="value">108 t/s</div>
-      <div class="sub">Gemma 4 E2B Q8 · SYCL b8724 · bench-only</div>
+    <div class="stat">
+      <div class="stat-label">SYCL Peak TG</div>
+      <div class="stat-value">108<span style="font-size:13px;color:var(--muted)"> t/s</span></div>
+      <div class="stat-sub">E2B Q8 · b8724 · bench-only</div>
     </div>
-    <div class="meta-card">
-      <div class="label">Contexto máximo</div>
-      <div class="value">256K</div>
-      <div class="sub">26B-A4B · KV ~2.9 GB · libre ~9.3 GB</div>
+    <div class="stat">
+      <div class="stat-label">Max Context</div>
+      <div class="stat-value">256K</div>
+      <div class="stat-sub">26B-A4B · KV ~2.9 GB · ~9.3 GB free</div>
     </div>
-    <div class="meta-card">
-      <div class="label">VRAM disponible</div>
-      <div class="value">32 GB</div>
-      <div class="sub">Dedicada · sin UMA penalty</div>
+    <div class="stat">
+      <div class="stat-label">VRAM</div>
+      <div class="stat-value">32 GB</div>
+      <div class="stat-sub">Dedicated · no UMA penalty</div>
     </div>
   </div>
 
-  <!-- BUILD 1 -->
-  <div class="section">
-    <div class="section-header">
-      <h2>Build 1 — Vulkan inicial</h2>
-      <span class="build-tag">~b8680 · 2026-04-09</span>
-      <span class="status bench" style="margin-left:auto">Superado</span>
+  <!-- ═══════════════════════════════════════
+       VULKAN BUILDS
+  ════════════════════════════════════════ -->
+  <div class="section-label">Vulkan builds</div>
+
+  <!-- Build 1 -->
+  <div class="card">
+    <div class="card-head">
+      <h2>Build 1 — Vulkan</h2>
+      <span class="card-meta">~b8680 · 2026-04-09</span>
+      <span class="pill pill-muted">Baseline</span>
     </div>
-    <div class="section-body">
+    <div class="card-body">
       <table>
         <thead>
           <tr>
-            <th>Modelo</th>
-            <th class="right">pp512 (t/s)</th>
-            <th class="right">tg128 (t/s)</th>
-            <th class="right">ctx máx</th>
+            <th>Model</th>
+            <th class="r">pp512 t/s</th>
+            <th class="r">tg128 t/s</th>
+            <th class="r">Max ctx</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td><span class="model-name">E4B Q8_0</span></td>
-            <td class="right val-mid">1,055</td>
-            <td class="right val-low">21.57</td>
-            <td class="right val-low">128K</td>
+            <td><span class="mono">Gemma 4 E4B Q8_0</span></td>
+            <td class="r mid">1,055</td>
+            <td class="r lo">21.57</td>
+            <td class="r dim">128K</td>
           </tr>
           <tr>
-            <td><span class="model-name">26B-A4B Q4_K_XL</span></td>
-            <td class="right val-mid">719</td>
-            <td class="right val-mid">30.62</td>
-            <td class="right val-mid">256K</td>
+            <td><span class="mono">Gemma 4 26B-A4B Q4_K_XL</span></td>
+            <td class="r mid">719</td>
+            <td class="r mid">30.62</td>
+            <td class="r mid">256K</td>
           </tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- BUILD 2 -->
-  <div class="section">
-    <div class="section-header">
+  <!-- Build 2 -->
+  <div class="card">
+    <div class="card-head">
       <h2>Build 2 — Vulkan master</h2>
-      <span class="build-tag">b8780 · 2026-04-10</span>
-      <span class="status prod">● Producción</span>
+      <span class="card-meta">b8780 · 2026-04-10</span>
+      <span class="pill pill-green">● Production</span>
     </div>
-    <div class="section-body">
+    <div class="card-body">
       <table>
         <thead>
           <tr>
-            <th>Modelo</th>
-            <th class="right">pp512 (t/s)</th>
-            <th class="right">tg128 (t/s)</th>
-            <th class="right">ctx máx</th>
-            <th class="right">Δ TG vs B1</th>
+            <th>Model</th>
+            <th class="r">pp512 t/s</th>
+            <th class="r">tg128 t/s</th>
+            <th class="r">Max ctx</th>
+            <th class="r">Δ TG</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td><span class="model-name">E2B Q8_0</span></td>
-            <td class="right val-high">1,275</td>
-            <td class="right val-high">41.03</td>
-            <td class="right val-mid">128K</td>
-            <td class="right delta-new">nuevo</td>
+            <td><span class="mono">Gemma 4 E2B Q8_0</span></td>
+            <td class="r hi">1,275</td>
+            <td class="r hi">41.03</td>
+            <td class="r dim">128K</td>
+            <td class="r newt">new</td>
           </tr>
           <tr>
-            <td><span class="model-name">E4B Q8_0</span></td>
-            <td class="right val-high">1,435</td>
-            <td class="right val-mid">21.86</td>
-            <td class="right val-mid">128K</td>
-            <td class="right delta-up">+1%</td>
+            <td><span class="mono">Gemma 4 E4B Q8_0</span></td>
+            <td class="r hi">1,435</td>
+            <td class="r mid">21.86</td>
+            <td class="r dim">128K</td>
+            <td class="r up">+1%</td>
           </tr>
           <tr>
-            <td><span class="model-name">26B-A4B Q4_K_XL</span> ⭐</td>
-            <td class="right val-high">1,124</td>
-            <td class="right val-high">33.80</td>
-            <td class="right val-high">256K</td>
-            <td class="right delta-up">+10%</td>
+            <td><span class="mono">Gemma 4 26B-A4B Q4_K_XL</span> ⭐</td>
+            <td class="r hi">1,124</td>
+            <td class="r hi">33.80</td>
+            <td class="r hi">256K</td>
+            <td class="r up">+10%</td>
           </tr>
           <tr>
-            <td><span class="model-name">Qwen3.5-9B Q4_K_M</span></td>
-            <td class="right val-mid">1,007</td>
-            <td class="right val-high">34.47</td>
-            <td class="right val-low">—</td>
-            <td class="right delta-new">nuevo</td>
+            <td><span class="mono">Qwen3.5-9B Q4_K_M</span></td>
+            <td class="r mid">1,007</td>
+            <td class="r hi">34.47</td>
+            <td class="r dim">—</td>
+            <td class="r newt">new</td>
           </tr>
           <tr>
-            <td><span class="model-name">Qwen3.5-35B-A3B Q4_K_M</span></td>
-            <td class="right val-mid">801</td>
-            <td class="right val-high">33.93</td>
-            <td class="right val-low">—</td>
-            <td class="right delta-new">nuevo</td>
+            <td><span class="mono">Qwen3.5-35B-A3B Q4_K_M</span></td>
+            <td class="r mid">801</td>
+            <td class="r hi">33.93</td>
+            <td class="r dim">—</td>
+            <td class="r newt">new</td>
           </tr>
           <tr>
-            <td><span class="model-name">Carnice-27b Q4_K_M</span></td>
-            <td class="right val-low">320</td>
-            <td class="right val-low">11.31</td>
-            <td class="right val-low">—</td>
-            <td class="right delta-new">nuevo</td>
+            <td><span class="mono">Carnice-27b Q4_K_M</span></td>
+            <td class="r lo">320</td>
+            <td class="r lo">11.31</td>
+            <td class="r dim">—</td>
+            <td class="r newt">new</td>
           </tr>
         </tbody>
       </table>
-      <div class="note info">
-        <span class="note-icon">ℹ️</span>
+      <div class="alert alert-info">
+        <span class="alert-icon">ℹ️</span>
         <div>
-          <strong>Mesa ANV + BMG</strong>: nuevo DP4A shader incluido pero <strong>no activa en B70</strong> (int dot: 0 reportado por Mesa). B70 expone KHR_coopmat FP16 únicamente — BF16 e INT8 DP4A pendientes de soporte Mesa. Las mejoras de PP (+36–56%) vienen de optimizaciones generales de shader.
+          <strong>Mesa ANV + BMG</strong>: new DP4A shader included but <strong>not active on B70</strong> (int dot: 0 reported by Mesa). B70 only exposes KHR_coopmat FP16 — BF16 and INT8 DP4A pending Mesa support. PP gains (+36–56%) come from general shader optimizations.
         </div>
       </div>
     </div>
   </div>
 
-  <!-- BUILD 3 -->
-  <div class="section">
-    <div class="section-header">
+  <!-- ═══════════════════════════════════════
+       SYCL BUILDS
+  ════════════════════════════════════════ -->
+  <div class="section-label">SYCL builds</div>
+
+  <!-- Build 3 -->
+  <div class="card">
+    <div class="card-head">
       <h2>Build 3 — SYCL · Flash Attention head-512</h2>
-      <span class="build-tag">b8724 · commit b54cb2e3d · 2026-04-10</span>
-      <span class="status blocked">⚠ Bench-only</span>
+      <span class="card-meta">b8724 · b54cb2e3d · 2026-04-10</span>
+      <span class="pill pill-red">⚠ Bench-only</span>
     </div>
-    <div class="section-body">
+    <div class="card-body">
       <table>
         <thead>
           <tr>
-            <th>Modelo</th>
-            <th class="right">pp512 (t/s)</th>
-            <th class="right">tg128 (t/s)</th>
-            <th class="right">Δ PP vs Vulkan</th>
-            <th class="right">Δ TG vs Vulkan</th>
+            <th>Model</th>
+            <th class="r">pp512 t/s</th>
+            <th class="r">tg128 t/s</th>
+            <th class="r">Δ PP vs Vulkan</th>
+            <th class="r">Δ TG vs Vulkan</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td><span class="model-name">E2B Q8_0</span></td>
-            <td class="right val-high">6,080</td>
-            <td class="right val-high">108</td>
-            <td class="right delta-up">+4.8×</td>
-            <td class="right delta-up">+2.6×</td>
+            <td><span class="mono">Gemma 4 E2B Q8_0</span></td>
+            <td class="r hi">6,080</td>
+            <td class="r hi">108</td>
+            <td class="r up">+4.8×</td>
+            <td class="r up">+2.6×</td>
           </tr>
           <tr>
-            <td><span class="model-name">E4B Q8_0</span></td>
-            <td class="right val-high">3,759</td>
-            <td class="right val-high">60</td>
-            <td class="right delta-up">+2.6×</td>
-            <td class="right delta-up">+2.7×</td>
+            <td><span class="mono">Gemma 4 E4B Q8_0</span></td>
+            <td class="r hi">3,759</td>
+            <td class="r hi">60</td>
+            <td class="r up">+2.6×</td>
+            <td class="r up">+2.7×</td>
           </tr>
           <tr>
-            <td><span class="model-name">Qwen3.5-9B Q4_K_M</span></td>
-            <td class="right val-high">2,371</td>
-            <td class="right val-high">60</td>
-            <td class="right delta-up">+2.4×</td>
-            <td class="right delta-up">+1.7×</td>
+            <td><span class="mono">Qwen3.5-9B Q4_K_M</span></td>
+            <td class="r hi">2,371</td>
+            <td class="r hi">60</td>
+            <td class="r up">+2.4×</td>
+            <td class="r up">+1.7×</td>
           </tr>
           <tr>
-            <td><span class="model-name">26B-A4B Q4_K_XL</span></td>
-            <td class="right val-mid">1,187</td>
-            <td class="right val-high">52</td>
-            <td class="right delta-up">+1.1×</td>
-            <td class="right delta-up">+1.5×</td>
+            <td><span class="mono">Gemma 4 26B-A4B Q4_K_XL</span></td>
+            <td class="r mid">1,187</td>
+            <td class="r hi">52</td>
+            <td class="r up">+1.1×</td>
+            <td class="r up">+1.5×</td>
           </tr>
           <tr>
-            <td><span class="model-name">Qwen3.5-35B-A3B Q4_K_M</span></td>
-            <td class="right val-mid">593</td>
-            <td class="right val-high">54</td>
-            <td class="right delta-down">-0.7×</td>
-            <td class="right delta-up">+1.6×</td>
+            <td><span class="mono">Qwen3.5-35B-A3B Q4_K_M</span></td>
+            <td class="r mid">593</td>
+            <td class="r hi">54</td>
+            <td class="r down">−0.7×</td>
+            <td class="r up">+1.6×</td>
           </tr>
         </tbody>
       </table>
-      <div class="note warn">
-        <span class="note-icon">⚠️</span>
+      <div class="alert alert-warn">
+        <span class="alert-icon">⚠️</span>
         <div>
-          <strong>Producción bloqueada.</strong> El commit siguiente <code>0988accf8</code> ("[SYCL] Q8_0 reorder ~3x speedup") rompe la generación real — produce gibberish en <code>/v1/chat/completions</code> aunque el bench pasa. Build SYCL congelado en <code>b54cb2e3d</code>. SYCL activa XMX completo (FP16 + BF16 + INT8) — por eso los saltos 2–3× vs Vulkan.
+          <strong>Production blocked.</strong> The next commit <code>0988accf8</code> ("[SYCL] Q8_0 reorder ~3x speedup") breaks real generation — produces gibberish in <code>/v1/chat/completions</code> even though the bench passes. SYCL build frozen at <code>b54cb2e3d</code>.
+          <p>Why SYCL is so much faster: it activates full XMX on the B70 (FP16 + BF16 + INT8 native), vs Vulkan which only has KHR_coopmat FP16. The 2–3× TG gap is entirely due to this.</p>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Comparativa inter-backend -->
-  <div class="section">
-    <div class="section-header">
-      <h2>Comparativa inter-backend — Gemma 4 26B-A4B Q4_K_XL</h2>
+  <!-- ═══════════════════════════════════════
+       SUMMARY
+  ════════════════════════════════════════ -->
+  <div class="section-label">Cross-backend summary</div>
+
+  <!-- Backend comparison -->
+  <div class="card">
+    <div class="card-head">
+      <h2>Gemma 4 26B-A4B Q4_K_XL — all backends</h2>
     </div>
-    <div class="section-body">
+    <div class="card-body">
       <table>
         <thead>
           <tr>
             <th>Build</th>
             <th>Backend</th>
-            <th class="right">pp512 (t/s)</th>
-            <th class="right">tg128 (t/s)</th>
-            <th>Estado</th>
+            <th class="r">pp512 t/s</th>
+            <th class="r">tg128 t/s</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>b8680 (inicial)</td>
-            <td>Vulkan</td>
-            <td class="right val-low">719</td>
-            <td class="right val-low">30.62</td>
-            <td><span style="color:var(--text-dim)">Superado</span></td>
+            <td class="dim">b8680 (baseline)</td>
+            <td class="dim">Vulkan</td>
+            <td class="r lo">719</td>
+            <td class="r lo">30.62</td>
+            <td><span class="dim">Superseded</span></td>
           </tr>
           <tr>
-            <td>b8780 (master)</td>
+            <td>b8780</td>
             <td>Vulkan</td>
-            <td class="right val-mid">1,124</td>
-            <td class="right val-mid">33.80</td>
-            <td><span style="color:var(--accent2)">● Producción</span></td>
+            <td class="r mid">1,124</td>
+            <td class="r mid">33.80</td>
+            <td><span style="color:var(--green); font-weight:600">● Production</span></td>
           </tr>
           <tr>
-            <td>b8724 (FA h512)</td>
+            <td>b8724</td>
             <td>SYCL</td>
-            <td class="right val-high">1,187</td>
-            <td class="right val-high">52</td>
-            <td><span style="color:var(--accent3)">⚠ Bench-only</span></td>
+            <td class="r hi">1,187</td>
+            <td class="r hi">52</td>
+            <td><span style="color:var(--yellow)">⚠ Bench-only</span></td>
           </tr>
           <tr>
-            <td>—</td>
-            <td>vLLM XPU</td>
-            <td class="right val-low">—</td>
-            <td class="right val-low">—</td>
-            <td><span style="color:var(--accent5)">⏳ Pendiente</span></td>
+            <td class="dim">—</td>
+            <td class="dim">vLLM XPU</td>
+            <td class="r lo">—</td>
+            <td class="r lo">—</td>
+            <td><span style="color:var(--purple)">⏳ Pending</span></td>
           </tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- Speculative Decoding -->
-  <div class="section">
-    <div class="section-header">
+  <!-- Speculative decoding -->
+  <div class="card">
+    <div class="card-head">
       <h2>Speculative Decoding — E2B (draft) + E4B (target)</h2>
-      <span class="build-tag">Vulkan · VRAM: ~12.5 GB</span>
-      <span class="status bench" style="margin-left:auto">No apto producción</span>
+      <span class="card-meta">Vulkan · ~12.5 GB VRAM used</span>
+      <span class="pill pill-red">Not production-ready</span>
     </div>
-    <div class="section-body">
+    <div class="card-body">
       <table>
         <thead>
           <tr>
-            <th>Acceptance rate</th>
-            <th class="right">TG efectivo (t/s)</th>
-            <th>Condición</th>
+            <th>Draft accept rate</th>
+            <th class="r">Effective TG t/s</th>
+            <th>Condition</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td>~100%</td>
-            <td class="right val-high">~50</td>
-            <td style="color:var(--text-dim)">Texto muy predecible</td>
+            <td class="r hi">~50</td>
+            <td class="dim">Highly predictable text</td>
           </tr>
           <tr>
             <td>~63%</td>
-            <td class="right val-mid">~25–30</td>
-            <td style="color:var(--text-dim)">Conversación normal</td>
+            <td class="r mid">~25–30</td>
+            <td class="dim">Normal conversation</td>
           </tr>
           <tr>
             <td>~0%</td>
-            <td class="right val-low">~21</td>
-            <td style="color:var(--text-dim)">Texto impredecible / código complejo</td>
+            <td class="r lo">~21</td>
+            <td class="dim">Unpredictable / complex code</td>
           </tr>
         </tbody>
       </table>
-      <div class="note warn">
-        <span class="note-icon">⚠️</span>
+      <div class="alert alert-warn">
+        <span class="alert-icon">⚠️</span>
         <div>
-          Bug activo: spec E2B+E4B genera tokens <code>&lt;unused24&gt;</code> en <code>/v1/chat/completions</code>. Funciona en <code>/v1/completions</code>. Sin fix upstream confirmado.
+          Active bug: spec E2B+E4B emits <code>&lt;unused24&gt;</code> tokens on <code>/v1/chat/completions</code>. Works correctly on <code>/v1/completions</code>. No upstream fix confirmed yet.
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Referencia 4080 -->
-  <div class="section">
-    <div class="section-header">
-      <h2>Referencia — NVIDIA RTX 4080 Laptop (kauh)</h2>
-      <span class="build-tag">CUDA sm_89 · 12 GB VRAM</span>
+  <!-- ═══════════════════════════════════════
+       REFERENCE
+  ════════════════════════════════════════ -->
+  <div class="section-label">Reference — NVIDIA RTX 4080 Laptop (kauh)</div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>RTX 4080 Laptop</h2>
+      <span class="card-meta">CUDA sm_89 · 12 GB VRAM</span>
     </div>
-    <div class="section-body">
+    <div class="card-body">
       <table>
         <thead>
           <tr>
-            <th>Modelo</th>
-            <th class="right">pp512 (t/s)</th>
-            <th class="right">pp8192 (t/s)</th>
-            <th class="right">tg128 (t/s)</th>
-            <th class="right">ctx máx</th>
+            <th>Model</th>
+            <th class="r">pp512 t/s</th>
+            <th class="r">pp8192 t/s</th>
+            <th class="r">tg128 t/s</th>
+            <th class="r">Max ctx</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td><span class="model-name">Gemma 4 E4B Q8_0</span></td>
-            <td class="right val-mid">415</td>
-            <td class="right val-high">6,343 ← pico</td>
-            <td class="right val-high">55.8</td>
-            <td class="right val-mid">64K</td>
+            <td><span class="mono">Gemma 4 E4B Q8_0</span></td>
+            <td class="r lo">415</td>
+            <td class="r hi">6,343 ←peak</td>
+            <td class="r hi">55.8</td>
+            <td class="r mid">64K</td>
           </tr>
           <tr>
-            <td><span class="model-name">Qwen3.5-9B Q8_0</span></td>
-            <td class="right val-mid">1,423</td>
-            <td class="right val-high">3,559</td>
-            <td class="right val-high">42.5</td>
-            <td class="right val-mid">—</td>
+            <td><span class="mono">Qwen3.5-9B Q8_0</span></td>
+            <td class="r mid">1,423</td>
+            <td class="r hi">3,559</td>
+            <td class="r hi">42.5</td>
+            <td class="r dim">—</td>
           </tr>
         </tbody>
       </table>
-      <div class="note info">
-        <span class="note-icon">ℹ️</span>
+      <div class="alert alert-info">
+        <span class="alert-icon">ℹ️</span>
         <div>
-          4080 domina en PP batches grandes (+12× vs B70 Vulkan a pp8k) y TG (+65% vs B70 Vulkan). Limitada a 12 GB VRAM → máx 64K ctx con E4B Q8. B70 gana en contexto (256K) y tiene 32 GB sin presión.
+          4080 leads in large-batch PP (+12× at pp8k) and TG (+65% vs B70 Vulkan). Hard limit: 12 GB VRAM → max 64K ctx with E4B Q8. B70 wins on context window (256K) and has 32 GB with room to spare.
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Pendientes -->
-  <div class="section">
-    <div class="section-header">
-      <h2>Roadmap — próximos builds</h2>
+  <!-- ═══════════════════════════════════════
+       ROADMAP
+  ════════════════════════════════════════ -->
+  <div class="section-label">Roadmap</div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Upcoming builds &amp; blockers</h2>
     </div>
-    <div class="section-body">
-      <div class="pending-item">
-        <div class="pending-dot blocked"></div>
+    <div class="card-body">
+      <div class="road-item">
+        <div class="road-dot dot-red"></div>
         <div>
-          <div class="pending-title">SYCL fix commit 0988accf8 (Q8_0 reorder)</div>
-          <div class="pending-desc">Upstream o workaround — habilitar SYCL en producción real. Potencial 52 t/s TG en 26B-A4B.</div>
+          <div class="road-title">Fix SYCL commit 0988accf8 (Q8_0 reorder)</div>
+          <div class="road-desc">Upstream fix or workaround needed to enable SYCL in production. Would unlock ~52 t/s TG on 26B-A4B.</div>
         </div>
       </div>
-      <div class="pending-item">
-        <div class="pending-dot waiting"></div>
+      <div class="road-item">
+        <div class="road-dot dot-purple"></div>
         <div>
-          <div class="pending-title">Vulkan DP4A / INT8 — Mesa ANV para BMG</div>
-          <div class="pending-desc">Cuando Mesa implemente DP4A para BMG: potencial 2× speedup TG Vulkan. Actualmente int dot: 0.</div>
+          <div class="road-title">Vulkan DP4A / INT8 — Mesa ANV for BMG</div>
+          <div class="road-desc">When Mesa implements DP4A for BMG: potential 2× TG speedup on Vulkan. Currently int dot: 0.</div>
         </div>
       </div>
-      <div class="pending-item">
-        <div class="pending-dot waiting"></div>
+      <div class="road-item">
+        <div class="road-dot dot-purple"></div>
         <div>
-          <div class="pending-title">vLLM XPU + Gemma 4 compressed checkpoints</div>
-          <div class="pending-desc">PR #39466 (XPU GDN torch.compile) pendiente. Cuando merge + imagen intel/vllm disponible: reemplaza llama.cpp.</div>
+          <div class="road-title">vLLM XPU + Gemma 4 compressed checkpoints</div>
+          <div class="road-desc">Waiting on PR #39466 (XPU GDN torch.compile) merge + intel/vllm image. Will replace llama.cpp as primary backend.</div>
         </div>
       </div>
-      <div class="pending-item">
-        <div class="pending-dot"></div>
+      <div class="road-item">
+        <div class="road-dot dot-muted"></div>
         <div>
-          <div class="pending-title">Vulkan loader 1.4.x (LunarG PPA)</div>
-          <div class="pending-desc">Actualización de mantenimiento. Posible mejora menor en Vulkan.</div>
+          <div class="road-title">Vulkan loader 1.4.x — LunarG PPA</div>
+          <div class="road-desc">Maintenance update. Minor Vulkan improvement expected.</div>
         </div>
       </div>
     </div>
@@ -635,10 +596,10 @@
 
 </div>
 
-<footer class="site-footer">
+<footer>
   <a href="https://github.com/wirbol/b70-benchmarks">github.com/wirbol/b70-benchmarks</a>
   &nbsp;·&nbsp; Intel Arc Pro B70 · k8-core · llama.cpp
-  &nbsp;·&nbsp; Actualizado: <span id="updated">2026-04-13</span>
+  &nbsp;·&nbsp; Last updated: 2026-04-13
 </footer>
 
 </body>

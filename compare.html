@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GPU Comparison — 4080 vs 780M vs Arc Pro B70</title>
+  <style>
+    :root {
+      --bg:     #0d1117;
+      --bg2:    #161b22;
+      --bg3:    #1c2128;
+      --border: #30363d;
+      --text:   #c9d1d9;
+      --muted:  #8b949e;
+
+      /* per-GPU accent colors */
+      --nvidia: #76b900;
+      --nvidia-bg: rgba(118,185,0,.1);
+      --nvidia-border: rgba(118,185,0,.25);
+
+      --intel:  #0068b5;
+      --intel-light: #58a6ff;
+      --intel-bg: rgba(88,166,255,.1);
+      --intel-border: rgba(88,166,255,.25);
+
+      --intel-sycl: #bc8cff;
+      --intel-sycl-bg: rgba(188,140,255,.1);
+      --intel-sycl-border: rgba(188,140,255,.25);
+
+      --amd:    #ed1c24;
+      --amd-light: #ff7b72;
+      --amd-bg: rgba(255,123,114,.08);
+      --amd-border: rgba(255,123,114,.2);
+
+      --green:  #3fb950;
+      --yellow: #d29922;
+      --red:    #f85149;
+      --mono:   "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 28px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .header-icon { font-size: 26px; }
+    .header-title { font-size: 18px; font-weight: 700; color: var(--text); }
+    .header-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .nav {
+      margin-left: auto;
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+    }
+    .nav a { color: var(--muted); text-decoration: none; }
+    .nav a:hover { color: var(--text); }
+    .nav a.active { color: var(--intel-light); font-weight: 600; }
+
+    /* ── Layout ── */
+    .page { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+
+    /* ── GPU legend ── */
+    .legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      flex: 1;
+      min-width: 200px;
+    }
+    .legend-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+    .dot-nvidia { background: var(--nvidia); }
+    .dot-intel  { background: var(--intel-light); }
+    .dot-intel-sycl { background: var(--intel-sycl); }
+    .dot-amd    { background: var(--amd-light); }
+    .legend-name  { font-size: 13px; font-weight: 600; color: var(--text); }
+    .legend-spec  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--muted);
+      margin: 28px 0 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-label::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Card ── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .card-head {
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 18px;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .card-head h2 { font-size: 14px; font-weight: 600; color: var(--text); }
+    .card-meta {
+      font-size: 11px; color: var(--muted); font-family: var(--mono);
+      background: var(--bg); border: 1px solid var(--border);
+      padding: 2px 8px; border-radius: 4px;
+    }
+    .card-body { padding: 18px; }
+
+    /* ── Comparison table ── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      padding: 8px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .05em; color: var(--muted); border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    th.r, td.r { text-align: right; }
+    th.c, td.c { text-align: center; }
+    td { padding: 9px 10px; border-bottom: 1px solid rgba(48,54,61,.45); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+
+    /* colored GPU header cells */
+    .th-nvidia { color: var(--nvidia) !important; }
+    .th-intel  { color: var(--intel-light) !important; }
+    .th-intel-sycl { color: var(--intel-sycl) !important; }
+    .th-amd    { color: var(--amd-light) !important; }
+
+    .mono { font-family: var(--mono); font-size: 12px; color: var(--intel-light); }
+    .dim  { color: var(--muted); }
+
+    /* value cells */
+    .v-nvidia { color: var(--nvidia); font-weight: 700; font-family: var(--mono); }
+    .v-intel  { color: var(--intel-light); font-weight: 700; font-family: var(--mono); }
+    .v-intel-sycl { color: var(--intel-sycl); font-weight: 700; font-family: var(--mono); }
+    .v-amd    { color: var(--amd-light); font-family: var(--mono); }
+    .v-lo     { color: var(--muted); font-family: var(--mono); }
+    .v-na     { color: var(--border); font-family: var(--mono); font-size: 11px; }
+    .winner   { background: rgba(63,185,80,.06); }
+
+    /* ── Bar chart rows ── */
+    .bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .bar {
+      height: 8px; border-radius: 4px; flex-shrink: 0;
+      transition: width .3s;
+    }
+    .bar-val { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+    .bar-nvidia     { background: var(--nvidia); }
+    .bar-intel      { background: var(--intel-light); }
+    .bar-intel-sycl { background: var(--intel-sycl); }
+    .bar-amd        { background: var(--amd-light); }
+    .bar-na         { background: var(--border); opacity: .4; }
+
+    /* ── Alert ── */
+    .alert {
+      display: flex; gap: 10px; padding: 11px 14px;
+      border-radius: 6px; font-size: 12.5px; margin-top: 14px; line-height: 1.5;
+    }
+    .alert-icon { font-size: 15px; flex-shrink: 0; padding-top: 1px; }
+    .alert-warn { background: rgba(210,153,34,.1);  border: 1px solid rgba(210,153,34,.3); }
+    .alert-info { background: rgba(88,166,255,.08); border: 1px solid rgba(88,166,255,.2); }
+    .alert strong { color: var(--text); }
+    .alert p { color: var(--muted); margin-top: 3px; }
+
+    code {
+      font-family: var(--mono); font-size: 12px;
+      background: var(--bg3); border: 1px solid var(--border);
+      padding: 1px 5px; border-radius: 4px; color: var(--intel-sycl);
+    }
+
+    /* ── Spec grid ── */
+    .spec-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 640px) { .spec-grid { grid-template-columns: 1fr; } }
+    .spec-card {
+      border-radius: 8px;
+      border: 1px solid;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .spec-card::before {
+      content: ""; position: absolute; top: 0; left: 0;
+      right: 0; height: 3px;
+    }
+    .spec-nvidia  { background: var(--nvidia-bg);      border-color: var(--nvidia-border); }
+    .spec-nvidia::before  { background: var(--nvidia); }
+    .spec-intel   { background: var(--intel-bg);       border-color: var(--intel-border); }
+    .spec-intel::before   { background: var(--intel-light); }
+    .spec-amd     { background: var(--amd-bg);         border-color: var(--amd-border); }
+    .spec-amd::before     { background: var(--amd-light); }
+    .spec-gpu-name { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+    .spec-nvidia .spec-gpu-name { color: var(--nvidia); }
+    .spec-intel  .spec-gpu-name { color: var(--intel-light); }
+    .spec-amd    .spec-gpu-name { color: var(--amd-light); }
+    .spec-row {
+      display: flex; justify-content: space-between;
+      font-size: 12px; padding: 4px 0;
+      border-bottom: 1px solid rgba(48,54,61,.4);
+    }
+    .spec-row:last-child { border-bottom: none; }
+    .spec-key { color: var(--muted); }
+    .spec-val { color: var(--text); font-weight: 600; font-family: var(--mono); font-size: 11px; }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border); padding: 14px 20px;
+      text-align: center; font-size: 12px; color: var(--muted); margin-top: 12px;
+    }
+    footer a { color: var(--intel-light); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="header">
+  <span class="header-icon">📊</span>
+  <div>
+    <div class="header-title">GPU Comparison — Local Inference</div>
+    <div class="header-sub">RTX 4080 Laptop &nbsp;vs&nbsp; Radeon 780M iGPU &nbsp;vs&nbsp; Arc Pro B70 · llama.cpp · Gemma 4</div>
+  </div>
+  <nav class="nav">
+    <a href="index.html">All Builds</a>
+    <a href="compare.html" class="active">Side-by-Side</a>
+  </nav>
+</header>
+
+<div class="page">
+
+  <!-- ── GPU spec cards ── -->
+  <div class="section-label">Hardware</div>
+  <div class="spec-grid">
+
+    <div class="spec-card spec-nvidia">
+      <div class="spec-gpu-name">NVIDIA RTX 4080 Laptop</div>
+      <div class="spec-row"><span class="spec-key">Host</span><span class="spec-val">kauh (laptop)</span></div>
+      <div class="spec-row"><span class="spec-key">Architecture</span><span class="spec-val">Ada Lovelace</span></div>
+      <div class="spec-row"><span class="spec-key">VRAM</span><span class="spec-val">12 GB GDDR6</span></div>
+      <div class="spec-row"><span class="spec-key">Mem BW</span><span class="spec-val">~400 GB/s</span></div>
+      <div class="spec-row"><span class="spec-key">Backend</span><span class="spec-val">CUDA sm_89</span></div>
+      <div class="spec-row"><span class="spec-key">Max ctx (E4B Q8)</span><span class="spec-val">~64K</span></div>
+    </div>
+
+    <div class="spec-card spec-amd">
+      <div class="spec-gpu-name">AMD Radeon 780M iGPU</div>
+      <div class="spec-row"><span class="spec-key">Host</span><span class="spec-val">k8-core (server)</span></div>
+      <div class="spec-row"><span class="spec-key">Architecture</span><span class="spec-val">RDNA3 (Phoenix)</span></div>
+      <div class="spec-row"><span class="spec-key">VRAM</span><span class="spec-val">~54 GB shared RAM</span></div>
+      <div class="spec-row"><span class="spec-key">Mem BW</span><span class="spec-val">~51 GB/s (DDR5)</span></div>
+      <div class="spec-row"><span class="spec-key">Backend</span><span class="spec-val">Vulkan0</span></div>
+      <div class="spec-row"><span class="spec-key">Max ctx (E4B Q8)</span><span class="spec-val">~128K (RAM)</span></div>
+    </div>
+
+    <div class="spec-card spec-intel">
+      <div class="spec-gpu-name">Intel Arc Pro B70</div>
+      <div class="spec-row"><span class="spec-key">Host</span><span class="spec-val">k8-core (server)</span></div>
+      <div class="spec-row"><span class="spec-key">Architecture</span><span class="spec-val">Battlemage (BMG G31)</span></div>
+      <div class="spec-row"><span class="spec-key">VRAM</span><span class="spec-val">32 GB GDDR6</span></div>
+      <div class="spec-row"><span class="spec-key">Mem BW</span><span class="spec-val">~512 GB/s</span></div>
+      <div class="spec-row"><span class="spec-key">Backend</span><span class="spec-val">Vulkan1 / SYCL</span></div>
+      <div class="spec-row"><span class="spec-key">Max ctx (26B Q4)</span><span class="spec-val">256K</span></div>
+    </div>
+
+  </div>
+
+  <!-- ── Legend ── -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-dot dot-nvidia"></div>
+      <div>
+        <div class="legend-name">RTX 4080 Laptop</div>
+        <div class="legend-spec">CUDA · 12 GB VRAM</div>
+      </div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot dot-amd"></div>
+      <div>
+        <div class="legend-name">Radeon 780M iGPU</div>
+        <div class="legend-spec">Vulkan · ~54 GB shared RAM</div>
+      </div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot dot-intel"></div>
+      <div>
+        <div class="legend-name">Arc Pro B70 — Vulkan</div>
+        <div class="legend-spec">Vulkan1 · build b8780 · 32 GB GDDR6</div>
+      </div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot dot-intel-sycl"></div>
+      <div>
+        <div class="legend-name">Arc Pro B70 — SYCL</div>
+        <div class="legend-spec">SYCL b8724 · bench-only · XMX active</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       GEMMA 4 E4B Q8_0
+  ══════════════════════════════════════ -->
+  <div class="section-label">Gemma 4 E4B Q8_0 — 7.7 GB</div>
+
+  <!-- TG bar chart -->
+  <div class="card">
+    <div class="card-head">
+      <h2>Text Generation — tg128 (tokens/sec)</h2>
+      <span class="card-meta">autoregressive · memory-bandwidth bound</span>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:200px">GPU</th>
+            <th>Performance</th>
+            <th class="r">t/s</th>
+            <th class="r">vs 780M</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="winner">
+            <td><span style="color:var(--nvidia); font-weight:700">RTX 4080 Laptop</span></td>
+            <td>
+              <div class="bar-wrap">
+                <div class="bar bar-nvidia" style="width:220px"></div>
+              </div>
+            </td>
+            <td class="r v-nvidia">55.8</td>
+            <td class="r" style="color:var(--nvidia); font-size:11px; font-family:var(--mono)">+3.8×</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--intel-sycl); font-weight:700">Arc Pro B70 — SYCL ⚠</span></td>
+            <td>
+              <div class="bar-wrap">
+                <div class="bar bar-intel-sycl" style="width:237px"></div>
+              </div>
+            </td>
+            <td class="r v-intel-sycl">60</td>
+            <td class="r" style="color:var(--intel-sycl); font-size:11px; font-family:var(--mono)">+4.1×</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--intel-light); font-weight:700">Arc Pro B70 — Vulkan</span></td>
+            <td>
+              <div class="bar-wrap">
+                <div class="bar bar-intel" style="width:86px"></div>
+              </div>
+            </td>
+            <td class="r v-intel">21.86</td>
+            <td class="r" style="color:var(--intel-light); font-size:11px; font-family:var(--mono)">+1.5×</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--amd-light)">Radeon 780M iGPU</span></td>
+            <td>
+              <div class="bar-wrap">
+                <div class="bar bar-amd" style="width:57px"></div>
+              </div>
+            </td>
+            <td class="r v-amd">14.6</td>
+            <td class="r dim">baseline</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="alert alert-info">
+        <span class="alert-icon">ℹ️</span>
+        <div>
+          TG is memory-bandwidth bound: each token reads the full model weights (~7.7 GB) plus accumulated KV cache. B70 Vulkan's 21 t/s vs 4080's 55 t/s reflects the BW difference (~512 vs ~400 GB/s dedicated, but CUDA paths are much more optimized). SYCL's 60 t/s activates full XMX (INT8 native), which is why it matches or exceeds the 4080.
+          <p><strong>⚠ SYCL bench-only</strong> — production blocked by commit <code>0988accf8</code> bug.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PP bar chart -->
+  <div class="card">
+    <div class="card-head">
+      <h2>Prompt Processing — pp512 (tokens/sec)</h2>
+      <span class="card-meta">prefill · scales with batch size</span>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:200px">GPU</th>
+            <th>Performance</th>
+            <th class="r">t/s</th>
+            <th class="r">vs 780M</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span style="color:var(--intel-sycl); font-weight:700">Arc Pro B70 — SYCL ⚠</span></td>
+            <td>
+              <div class="bar-wrap">
+                <div class="bar bar-intel-sycl" style="width:280px"></div>
+              </div>
+            </td>
+            <td class="r v-intel-sycl">3,759</td>
+            <td class="r" style="color:var(--intel-sycl); font-size:11px; font-family:var(--mono)">+8.1×</td>
+          </tr>
+          <tr class="winner">
+            <td><span style="color:var(--intel-light); font-weight:700">Arc Pro B70 — Vulkan</span></td>
+            <td>
+              <div class="bar-wrap">
+                <div class="bar bar-intel" style="width:189px"></div>
+              </div>
+            </td>
+            <td class="r v-intel">1,435</td>
+            <td class="r" style="color:var(--intel-light); font-size:11px; font-family:var(--mono)">+3.1×</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--nvidia); font-weight:700">RTX 4080 Laptop</span></td>
+            <td>
+              <div class="bar-wrap">
+                <div class="bar bar-nvidia" style="width:55px"></div>
+              </div>
+            </td>
+            <td class="r v-nvidia">415</td>
+            <td class="r" style="color:var(--nvidia); font-size:11px; font-family:var(--mono)">+0.9×</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--amd-light)">Radeon 780M iGPU</span></td>
+            <td>
+              <div class="bar-wrap">
+                <div class="bar bar-amd" style="width:62px"></div>
+              </div>
+            </td>
+            <td class="r v-amd">464</td>
+            <td class="r dim">baseline</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="alert alert-info">
+        <span class="alert-icon">ℹ️</span>
+        <div>
+          At pp512, the 4080 is actually <em>slower</em> than the 780M — CUDA has higher scheduling overhead on small batches. The 4080 shines at large batches: at pp8192 it reaches <strong>6,343 t/s</strong> (+13× vs 780M). The B70's PP advantage at small batches comes from dedicated fast GDDR6 with no shared-memory contention.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full number table -->
+  <div class="card">
+    <div class="card-head">
+      <h2>Full PP breakdown — all batch sizes</h2>
+      <span class="card-meta">Gemma 4 E4B Q8_0</span>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr>
+            <th>Batch</th>
+            <th class="r th-nvidia">RTX 4080</th>
+            <th class="r th-amd">780M iGPU</th>
+            <th class="r th-intel">B70 Vulkan</th>
+            <th class="r th-intel-sycl">B70 SYCL ⚠</th>
+            <th class="r">Winner</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="dim">pp512</td>
+            <td class="r v-lo">415</td>
+            <td class="r v-amd">464</td>
+            <td class="r v-intel">1,435</td>
+            <td class="r v-intel-sycl">3,759</td>
+            <td class="r" style="color:var(--intel-sycl); font-size:11px">SYCL ⚠</td>
+          </tr>
+          <tr>
+            <td class="dim">pp1024</td>
+            <td class="r v-na">—</td>
+            <td class="r v-na">—</td>
+            <td class="r v-intel">—</td>
+            <td class="r v-na">—</td>
+            <td class="r v-na">—</td>
+          </tr>
+          <tr>
+            <td class="dim">pp2048</td>
+            <td class="r v-na">—</td>
+            <td class="r v-na">—</td>
+            <td class="r v-intel">—</td>
+            <td class="r v-na">—</td>
+            <td class="r v-na">—</td>
+          </tr>
+          <tr>
+            <td class="dim">pp4096</td>
+            <td class="r v-nvidia">5,596</td>
+            <td class="r v-amd">490</td>
+            <td class="r v-intel">271</td>
+            <td class="r v-na">—</td>
+            <td class="r" style="color:var(--nvidia); font-size:11px">4080</td>
+          </tr>
+          <tr>
+            <td class="dim">pp8192</td>
+            <td class="r v-nvidia">6,343</td>
+            <td class="r v-amd">491</td>
+            <td class="r v-intel">217</td>
+            <td class="r v-na">—</td>
+            <td class="r" style="color:var(--nvidia); font-size:11px">4080</td>
+          </tr>
+          <tr style="border-top: 1px solid var(--border)">
+            <td><strong>tg128</strong></td>
+            <td class="r v-nvidia">55.8</td>
+            <td class="r v-amd">14.6</td>
+            <td class="r v-intel">21.86</td>
+            <td class="r v-intel-sycl">60</td>
+            <td class="r" style="color:var(--intel-sycl); font-size:11px">SYCL ⚠</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="alert alert-warn">
+        <span class="alert-icon">⚠️</span>
+        <div>
+          <strong>Missing data:</strong> pp1024 / pp2048 for 4080 and 780M were not measured. 780M pp4096/8192 is nearly flat (~490 t/s) because shared RAM bandwidth is already saturated at pp512 (~51 GB/s DDR5). The 4080 scales to 6,343 t/s at pp8k — CUDA batching is far more efficient.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       CONTEXT WINDOW
+  ══════════════════════════════════════ -->
+  <div class="section-label">Context window &amp; memory</div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Max usable context — Gemma 4 E4B Q8_0</h2>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr>
+            <th>GPU</th>
+            <th class="r">Model size</th>
+            <th class="r">Memory available</th>
+            <th class="r">KV cache (Q8)</th>
+            <th class="r">Max ctx</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span style="color:var(--nvidia); font-weight:700">RTX 4080 Laptop</span></td>
+            <td class="r v-lo">7.8 GB</td>
+            <td class="r v-lo">12 GB VRAM</td>
+            <td class="r v-lo">~544 MB</td>
+            <td class="r v-nvidia">~64K</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--amd-light)">Radeon 780M iGPU</span></td>
+            <td class="r v-lo">7.7 GB</td>
+            <td class="r v-amd">~54 GB RAM</td>
+            <td class="r v-lo">~1.1 GB</td>
+            <td class="r v-amd">~128K</td>
+          </tr>
+          <tr class="winner">
+            <td><span style="color:var(--intel-light); font-weight:700">Arc Pro B70</span></td>
+            <td class="r v-lo">7.7 GB</td>
+            <td class="r v-intel">32 GB GDDR6</td>
+            <td class="r v-lo">~1.1 GB</td>
+            <td class="r v-intel">~128K</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Max usable context — Gemma 4 26B-A4B Q4_K_XL</h2>
+      <span class="card-meta">production model</span>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr>
+            <th>GPU</th>
+            <th class="r">Model size</th>
+            <th class="r">Memory available</th>
+            <th class="r">KV cache @ max ctx</th>
+            <th class="r">Max ctx</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span style="color:var(--nvidia); font-weight:700">RTX 4080 Laptop</span></td>
+            <td class="r v-lo">16 GB</td>
+            <td class="r v-lo">12 GB VRAM</td>
+            <td class="r v-na">—</td>
+            <td class="r v-na">doesn't fit</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--amd-light)">Radeon 780M iGPU</span></td>
+            <td class="r v-lo">16 GB</td>
+            <td class="r v-amd">~54 GB RAM</td>
+            <td class="r v-lo">~2.9 GB</td>
+            <td class="r v-amd">256K (slow)</td>
+          </tr>
+          <tr class="winner">
+            <td><span style="color:var(--intel-light); font-weight:700">Arc Pro B70</span></td>
+            <td class="r v-lo">16 GB</td>
+            <td class="r v-intel">32 GB GDDR6</td>
+            <td class="r v-lo">~2.9 GB</td>
+            <td class="r v-intel">256K ✓</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="alert alert-info">
+        <span class="alert-icon">ℹ️</span>
+        <div>
+          The 26B-A4B model alone is 16 GB — it simply doesn't fit in the 4080's 12 GB VRAM. The 780M can load it into shared RAM but TG speed at 256K ctx would be severely limited by DDR5 bandwidth. <strong>B70 is the only GPU in this setup that runs 26B-A4B at 256K context with good TG speed.</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       VERDICT
+  ══════════════════════════════════════ -->
+  <div class="section-label">When to use which</div>
+
+  <div class="card">
+    <div class="card-body" style="padding: 0;">
+      <table>
+        <thead>
+          <tr>
+            <th>Use case</th>
+            <th class="c">RTX 4080</th>
+            <th class="c">780M iGPU</th>
+            <th class="c">Arc Pro B70</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Fast TG — chat/bot response</td>
+            <td class="c" style="color:var(--nvidia)">✓ 55 t/s</td>
+            <td class="c dim">✗ 14 t/s</td>
+            <td class="c" style="color:var(--intel-light)">✓ 33 t/s</td>
+          </tr>
+          <tr>
+            <td>Large-batch prefill (RAG, docs)</td>
+            <td class="c" style="color:var(--nvidia)">✓ 6,343 t/s</td>
+            <td class="c dim">✗ ~490 t/s</td>
+            <td class="c dim">~ 217 t/s</td>
+          </tr>
+          <tr>
+            <td>Run 26B-A4B model (16 GB)</td>
+            <td class="c dim">✗ won't fit</td>
+            <td class="c dim">~ slow</td>
+            <td class="c" style="color:var(--intel-light)">✓ 33 t/s</td>
+          </tr>
+          <tr>
+            <td>256K context window</td>
+            <td class="c dim">✗ 64K max</td>
+            <td class="c dim">~ slow</td>
+            <td class="c" style="color:var(--intel-light)">✓ confirmed</td>
+          </tr>
+          <tr>
+            <td>Two models simultaneously</td>
+            <td class="c dim">✗ 12 GB limit</td>
+            <td class="c" style="color:var(--amd-light)">✓ 54 GB RAM</td>
+            <td class="c" style="color:var(--intel-light)">✓ 32 GB GDDR6</td>
+          </tr>
+          <tr>
+            <td>Spec decoding E2B+E4B</td>
+            <td class="c dim">✗ OOM</td>
+            <td class="c dim">~ very slow</td>
+            <td class="c" style="color:var(--intel-light)">~ ~25–50 t/s</td>
+          </tr>
+          <tr>
+            <td>Always-on server (power)</td>
+            <td class="c dim">✗ laptop</td>
+            <td class="c" style="color:var(--amd-light)">✓ low TDP</td>
+            <td class="c dim">~ higher TDP</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <a href="index.html">← All Builds</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/wirbol/b70-benchmarks">github.com/wirbol/b70-benchmarks</a>
+  &nbsp;·&nbsp; Last updated: 2026-04-13
+</footer>
+
+</body>
+</html>
